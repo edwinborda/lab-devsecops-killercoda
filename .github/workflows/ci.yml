@@ -1,0 +1,99 @@
+name: CI — pruebas, calidad y seguridad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write   # para publicar el SARIF de Trivy en la pestaña Security
+
+jobs:
+  pruebas:
+    name: Pruebas unitarias
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar pruebas
+        run: npm test
+
+  calidad:
+    name: Análisis estático (SonarQube)
+    runs-on: ubuntu-latest
+    needs: pruebas
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Se omite si el repositorio no tiene los secretos SONAR_TOKEN / SONAR_HOST_URL
+      - name: SonarQube Scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v4
+
+      - name: Aviso si no hay SonarQube configurado
+        if: env.SONAR_TOKEN == ''
+        run: echo "::notice::Configura los secretos SONAR_TOKEN y SONAR_HOST_URL para activar el análisis"
+
+  seguridad:
+    name: Escaneo de seguridad (Trivy)
+    runs-on: ubuntu-latest
+    needs: pruebas
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy — dependencias y configuración del repositorio
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,misconfig
+          severity: HIGH,CRITICAL
+          format: table
+          exit-code: '0'
+
+      - name: Construir imagen del backend
+        run: docker build -t tasks-backend:${{ github.sha }} backend/
+
+      - name: Construir imagen del frontend
+        run: docker build -t tasks-frontend:${{ github.sha }} frontend/
+
+      - name: Trivy — imagen del backend (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: tasks-backend:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-backend.sarif
+          exit-code: '0'
+
+      - name: Publicar resultados en GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-backend.sarif
+
+      - name: Quality gate — bloquear si hay CRITICAL
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: tasks-backend:${{ github.sha }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'

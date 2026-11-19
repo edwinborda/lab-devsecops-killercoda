@@ -1,0 +1,24 @@
+{
+  "title": "Lab DevSecOps: CI/CD con SonarQube, Trivy y Kubernetes",
+  "description": "Microservicio frontend + backend: pruebas, análisis estático, escaneo de vulnerabilidades y despliegue en un cluster Kubernetes",
+  "details": {
+    "intro": {
+      "text": "intro.md",
+      "background": "background.sh",
+      "foreground": "foreground.sh"
+    },
+    "steps": [
+      { "title": "Herramientas y cluster Kubernetes", "text": "step1/text.md", "verify": "step1/verify.sh" },
+      { "title": "Calidad de código con SonarQube",  "text": "step2/text.md", "verify": "step2/verify.sh" },
+      { "title": "Imágenes y escaneo con Trivy",     "text": "step3/text.md", "verify": "step3/verify.sh" },
+      { "title": "Despliegue en Kubernetes",         "text": "step4/text.md", "verify": "step4/verify.sh" },
+      { "title": "Monitoreo (opcional)",             "text": "step5/text.md" }
+    ],
+    "finish": {
+      "text": "finish.md"
+    }
+  },
+  "backend": {
+    "imageid": "ubuntu"
+  }
+}

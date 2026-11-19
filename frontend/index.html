@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tablero de Tareas DevSecOps</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --ok:#22c55e; --accent:#38bdf8; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+    main { max-width:640px; margin:40px auto; padding:0 16px; }
+    h1 { font-size:1.6rem; margin:0 0 4px; }
+    .sub { color:var(--muted); margin:0 0 24px; font-size:.95rem; }
+    .status { display:inline-block; padding:4px 10px; border-radius:999px; background:var(--card); font-size:.85rem; margin-bottom:20px; }
+    .status.ok { color:var(--ok); }
+    form { display:flex; gap:8px; margin-bottom:20px; }
+    input { flex:1; padding:10px 12px; border-radius:8px; border:1px solid #334155; background:var(--card); color:var(--text); }
+    button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#0f172a; font-weight:600; cursor:pointer; }
+    ul { list-style:none; padding:0; margin:0; }
+    li { background:var(--card); padding:12px 14px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+    li.done span { text-decoration:line-through; color:var(--muted); }
+    footer { margin-top:28px; color:var(--muted); font-size:.8rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Tablero de Tareas DevSecOps</h1>
+    <p class="sub">Frontend (Nginx) → Backend (Node.js) desplegados en Kubernetes</p>
+    <div id="status" class="status">Verificando backend…</div>
+    <form id="form">
+      <input id="title" placeholder="Nueva tarea del pipeline…" autocomplete="off">
+      <button type="submit">Agregar</button>
+    </form>
+    <ul id="list"></ul>
+    <footer>Laboratorio · Fundamentos DevOps · Universidad de La Sabana</footer>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id)
+    async function health() {
+      try {
+        const r = await fetch('/api/health'); const d = await r.json()
+        $('status').textContent = `Backend ${d.status} · versión ${d.version}`
+        $('status').classList.add('ok')
+      } catch { $('status').textContent = 'Backend no disponible' }
+    }
+    async function load() {
+      const r = await fetch('/api/tasks'); const tasks = await r.json()
+      $('list').innerHTML = ''
+      tasks.forEach(t => {
+        const li = document.createElement('li')
+        if (t.done) li.classList.add('done')
+        const span = document.createElement('span'); span.textContent = t.title
+        const mark = document.createElement('small'); mark.textContent = t.done ? '✔' : '○'
+        li.append(span, mark)
+        li.onclick = async () => { await fetch(`/api/tasks/${t.id}`, { method:'PATCH' }); load() }
+        $('list').append(li)
+      })
+    }
+    $('form').onsubmit = async e => {
+      e.preventDefault()
+      const title = $('title').value.trim(); if (!title) return
+      await fetch('/api/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title }) })
+      $('title').value = ''; load()
+    }
+    health(); load()
+  </script>
+</body>
+</html>

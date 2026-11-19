@@ -1,0 +1,15 @@
+{
+  "name": "tasks-backend",
+  "version": "1.0.0",
+  "description": "API de tareas — laboratorio DevSecOps (Fundamentos DevOps)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/app.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "lodash": "4.17.15",
+    "prom-client": "^15.1.0"
+  }
+}
